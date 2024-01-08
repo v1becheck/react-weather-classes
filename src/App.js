@@ -38,10 +38,28 @@ class App extends React.Component {
     isLoading: false,
     displayLocation: '',
     weather: {},
+    requestTimestamps: [],
+  };
+
+  isRateLimited = () => {
+    const currentTime = Date.now();
+    const fiveMinutesAgo = currentTime - 300000; // 5 minutes in milliseconds
+
+    // Filter out requests that are older than 5 minutes
+    const recentRequests = this.state.requestTimestamps.filter(
+      (timestamp) => timestamp > fiveMinutesAgo
+    );
+
+    return recentRequests.length >= 100;
   };
 
   fetchWeather = async () => {
     if (this.state.location.length < 2) return this.setState({ weather: {} });
+
+    if (this.isRateLimited()) {
+      console.log('Rate limit reached. Please wait.');
+      return; // Exit the function if rate limited
+    }
 
     try {
       this.setState({ isLoading: true });
@@ -71,11 +89,23 @@ class App extends React.Component {
       console.error(err);
     } finally {
       this.setState({ isLoading: false });
+      this.setState((prevState) => ({
+        requestTimestamps: [...prevState.requestTimestamps, Date.now()],
+      }));
     }
   };
 
   setLocation = (e) => {
-    this.setState({ location: e.target.value });
+    const locationInput = e.target.value;
+
+    if (locationInput.length > 0 && !locationInput.match(/^[a-zA-Z\s,]+$/)) {
+      console.error(
+        'Invalid location format. Only letters, spaces, and commas are allowed.'
+      );
+      return;
+    }
+
+    this.setState({ location: locationInput });
   };
 
   // useEffect []
